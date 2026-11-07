@@ -1,17 +1,17 @@
 # Hackathon Prototypes
 
-Six independent local Streamlit mockups, each assigned to an Orca Antigravity worker with requested model `gemini3.8flash`. Workers launched successfully; implementation and validation are pending their completion reports.
+Six independent local Streamlit mockups, each assigned to an Orca Antigravity worker with requested model `gemini3.8flash`. Two prototypes are complete and committed with worker-reported analytical and headless UI checks passing; four completion reports are pending.
 
 All branches start from baseline commit `852655c`. No branch is merged or pushed. Original datasets and notebooks are preserved.
 
-| Idea | Branch | Planned port |
-| --- | --- | --- |
-| Goal buildup and match story | `pablorocg/mockup-match-story` | 8501 |
-| Off-ball space creators | `pablorocg/mockup-space-creators` | 8502 |
-| Defensive shape explorer | `pablorocg/mockup-defensive-shape` | 8503 |
-| Second-half intensity | `pablorocg/mockup-second-half` | 8504 |
-| Accessible coach dashboard | `pablorocg/mockup-coach-dashboard` | 8505 |
-| Passing options explorer | `pablorocg/mockup-passing-options` | 8506 |
+| Idea | Branch | Port | Status / commit |
+| --- | --- | --- | --- |
+| Goal buildup and match story | `pablorocg/mockup-match-story` | 8501  Awaiting worker report |
+| Off-ball space creators | `pablorocg/mockup-space-creators` | 8502  Complete; `35bc9e2`; 5 tests passed |
+| Defensive shape explorer | `pablorocg/mockup-defensive-shape` | 8503  Awaiting worker report |
+| Second-half intensity | `pablorocg/mockup-second-half` | 8504  Awaiting worker report |
+| Accessible coach dashboard | `pablorocg/mockup-coach-dashboard` | 8505  Awaiting worker report |
+| Passing options explorer | `pablorocg/mockup-passing-options` | 8506  Complete; `ca42999`; 6 tests passed |
 
 ## Open a prototype
 
