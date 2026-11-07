@@ -1,0 +1,13 @@
+[project]
+name = "veo-sprint-match-01"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "ipykernel>=7.4.0",
+    "ipywidgets>=8.1.9",
+    "matplotlib>=3.11.2",
+    "pandas>=3.1.1",
+    "pyarrow>=26.0.1",
+]
