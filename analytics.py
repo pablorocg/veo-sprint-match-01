@@ -63,16 +63,14 @@ def format_video_clock(timestamp_ms: int | float) -> str:
 
 
 def format_inplay_clock(timestamp_ms: int | float, half: int) -> str:
-    """Estimate in-play half clock (e.g., 'H2 27:17 (+27m into H2)') relative to half kick-off."""
+    """Compute elapsed time since half kick-off (inferred from tracking half start, not an official referee match clock)."""
     if pd.isna(timestamp_ms) or half not in HALF_START_MS:
         return "Unknown"
     elapsed_ms = max(0, int(round(float(timestamp_ms))) - HALF_START_MS[int(half)])
     elapsed_sec = elapsed_ms // 1000
     mins = elapsed_sec // 60
     secs = elapsed_sec % 60
-    base_min = 0 if int(half) == 1 else 45
-    approx_match_min = base_min + mins + 1
-    return f"H{int(half)} ~{approx_match_min}' ({mins:02d}:{secs:02d} into H{int(half)})"
+    return f"+{mins:02d}:{secs:02d} into H{int(half)} (inferred)"
 
 
 def get_nearest_frame(

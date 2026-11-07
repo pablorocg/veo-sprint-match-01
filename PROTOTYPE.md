@@ -4,8 +4,8 @@
 This prototype provides an accessible, local Streamlit match-review dashboard built for amateur football coaches reviewing **Veo Match 01 (`away 4 – 2 home`)**. Rather than overwhelming coaches with raw data tables or unverified predictive models, it answers the practical post-match question: **"What should I review next?"**
 
 It connects:
-1. **Trustworthy Team & Squad Summary Cards** from `player_summary.csv` and `events.csv` (explaining why Away won 4–2 despite near-identical possession, pass completion, and total shots).
-2. **Searchable & Selectable Key Moments (All 6 Goals + All 29 Shots)** with exact **Video Recording Timestamps** (`MM:SS` on `match_01_full.mp4`), estimated in-play match clocks, 22-player pitch snapshots, lead-up pass/ball trajectories, and defensive shape spatial heuristics.
+1. **Trustworthy Team & Squad Summary Cards** from `player_summary.csv` and `events.csv`, presenting descriptive comparisons of goals, shot distances, pass completion, outfield distance, and share of recorded on-ball events (`48.7%` Away vs `51.3%` Home—explicitly distinguished from ball possession and without claiming causal proof of why a team won).
+2. **Searchable & Selectable Key Moments (All 6 Goals + All 29 Shots)** with exact **Video Recording Timestamps** (`MM:SS` on `match_01_full.mp4`), non-official inferred half-elapsed times (relative to half kick-off), 22-player pitch snapshots, lead-up pass/ball trajectories, and defensive shape spatial heuristics.
 3. **Interactive Player Pitch & Stats Inspector** where selecting any of the 33 players updates their summary metrics, per-half tracking coverage (`H1` vs `H2` tracked frames/minutes), and a customizable 2D pitch heatmap / speed-zone & on-ball events visualization.
 
 ---
@@ -34,11 +34,11 @@ uv run streamlit run app.py --server.port 8505
 ---
 
 ## Data Correctness & Limitations
-- **Video Clock vs. Match Clock:** `timestamp_ms` and `minute` represent elapsed time in the video file `match_01_full.mp4` (`seconds = timestamp_ms // 1000`), which starts before kick-off (`05:51` / `351.2 s`) and includes half-time (`H2` starts at `59:45` / `3585.2 s`). Both clocks are displayed side-by-side.
+- **Video Clock vs. Inferred Half-Elapsed Time:** `timestamp_ms` and `minute` represent elapsed time in the video file `match_01_full.mp4` (`seconds = timestamp_ms // 1000`), which starts before kick-off (`05:51` / `351.2 s`) and includes half-time (`H2` starts at `59:45` / `3585.2 s`). The dashboard displays the exact video timestamp alongside inferred time elapsed since half kick-off (`+MM:SS into H1/H2 (inferred)`), explicitly labeled as non-official rather than an official referee match clock.
+- **Recorded Event Share vs. Ball Possession:** `events.csv` is a detected sample of 1,289 on-ball actions (`48.7%` Away vs. `51.3%` Home share of recorded on-ball events). This measures share of recorded events, not ball possession, and missing event rows in a window do not establish absence of touches or possession.
+- **Descriptive Summaries & Spatial Heuristics vs. Causation:** Summary cards and single-frame defensive block width/depth ("Stretched Defense" heuristic tags: `outfield_depth >= 50 m`, `outfield_width >= 42 m`, or `back4_width >= 28 m`, excluding goalkeeper and referee) provide factual descriptive context to help coaches choose video clips to review; they do not establish why a team won, claim causation, or train a predictive model on 29 shots.
 - **Summary Minutes vs. Per-Half Tracking Coverage:** `player_summary.csv` provides a single `minutes_played` number per player. To prevent misleading H1 vs. H2 fatigue comparisons when players were substituted, the dashboard explicitly computes per-half tracked frame counts (`1,500 frames = 10 min` at 2.5 Hz) and flags players without ≥10 minutes in both halves.
 - **Nearest-Frame Matching & Trajectory Gaps:** Events are matched to the nearest tracking frame **strictly within the same half** (`max_tolerance_ms = 1000`, typical offset `0–200 ms`). Player and ball trajectories are segmented on missing coordinates (`ball_x`/`ball_y` are null in ~12% of frames) and never interpolate across tracking gaps or the half-time boundary.
-- **Spatial Heuristics vs. Causation:** Defensive block width/depth and "Stretched Defense" tags (`outfield_depth >= 50 m`, `outfield_width >= 42 m`, or `back4_width >= 28 m`, excluding goalkeeper and referee) are descriptive spatial heuristics at a single frame, not causal proof or predictive xG models (no model is trained on 29 shots).
-- **Incomplete Event Coverage:** `events.csv` is a detected sample of 1,289 on-ball actions; missing event rows in a time window do not establish absence of touches or possession.
 
 ---
 

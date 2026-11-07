@@ -50,10 +50,11 @@ def main() -> None:
     with st.expander("ℹ️ Coach's Guide: Clocks, Coverage & Data Caveats (Read First)", expanded=False):
         st.markdown(
             """
-            - **Video Clock vs. Match Clock:** `timestamp_ms` and `minute` in the data follow the **video recording clock**, not the referee's watch. Kick-off is at **05:51** (`351.2 s`) on the video and Half 2 starts at **59:45** (`3585.2 s`). Every moment below lists both the exact **Video Timestamp** (to scrub `match_01_full.mp4`) and the **Estimated In-Play Clock**.
+            - **Video Clock vs. Inferred Half-Elapsed Time:** `timestamp_ms` and `minute` in the source files follow the **video recording clock**, not an official referee match clock. Kick-off is at **05:51** (`351.2 s`) on the video and Half 2 starts at **59:45** (`3585.2 s`). Every moment below lists the exact **Video Timestamp** (to scrub `match_01_full.mp4`) alongside **inferred time elapsed since the start of that half** (labeled as inferred, not official match time).
+            - **Recorded Event Share vs. Possession:** `events.csv` is a detected sample of 1,289 on-ball actions (`48.7%` Away vs. `51.3%` Home share of recorded on-ball events). This measures share of detected events, **not** true ball possession percentage, and missing event rows do not establish absence of touches or possession.
             - **Summary Minutes vs. Per-Half Tracking Coverage:** `player_summary.csv` reports total `minutes_played`, which hides substitutions. Use per-half tracked frame counts (`1,500 frames ≈ 10 min` at 2.5 Hz) before comparing Half 1 vs. Half 2 running rates.
             - **Goals vs. Shots Schema:** All **6 goals** are recorded as `event_name == "goal"` rows (which carry **no coordinates**). Only **4 of the 29 shots** have `is_goal == True` attached; 2 goals (`away_8` at 66:10 and `home_18` at 94:32) have no shot row in `events.csv`.
-            - **Spatial Heuristics vs. Established Findings:** Defensive width/depth and "Stretched Defense" flags are **spatial heuristics** from single-frame outfield coordinates (`role == "outfield"`), not causal proof. Missing on-ball event rows do not prove absence of touches or possession, and ~12% of frames have unlocated ball coordinates (`ball_x`/`ball_y` null).
+            - **Spatial Heuristics vs. Established Findings:** Descriptive summaries and single-frame defensive width/depth ("Stretched Defense" heuristic flags from `role == "outfield"`) highlight clips to review; they do **not** establish causal reasons for why a team won. About 12% of frames have unlocated ball coordinates (`ball_x`/`ball_y` null).
             """
         )
 
@@ -108,7 +109,7 @@ def main() -> None:
     )
 
     # --- SECTION 1: TRUSTWORTHY MATCH SUMMARY CARDS ---
-    st.subheader("1. Match Overview & Why Away Won 4–2 Despite Near-Identical Process Stats")
+    st.subheader("1. Descriptive Match Summary Cards (`player_summary.csv` & `events.csv`)")
     away_m = team_metrics["away"]
     home_m = team_metrics["home"]
 
@@ -134,22 +135,25 @@ def main() -> None:
         f"Home {home_m['pass_completion_pct']}% ({away_m['passes']} vs {home_m['passes']})",
     )
     c5.metric(
+        "Recorded Event Share",
+        f"Away {away_m['event_share_pct']}%",
+        f"Home {home_m['event_share_pct']}% (of 1,289 events)",
+    )
+    c6.metric(
         "Outfield Distance (km)",
         f"Away {away_m['outfield_distance_km']} km",
         f"Home {home_m['outfield_distance_km']} km (GK/Ref excl.)",
     )
-    c6.metric(
-        "Tackles / Interceptions",
-        f"Away {away_m['tackles']}T / {away_m['interceptions']}I",
-        f"Home {home_m['tackles']}T / {home_m['interceptions']}I",
-    )
 
     st.info(
-        "💡 **Coach Takeaway (Established Fact vs. Context):** On volume metrics, Home and Away were almost identical "
-        "(64.5% vs 64.4% pass completion, 15 vs 14 shots, 101.0 km vs 103.6 km outfield distance). "
-        "**What should you review next?** Look at **shot quality and second-half transitions**: Away took **8 shots inside 15 m** "
-        f"(averaging {away_m['mean_shot_distance_m']} m per shot) compared to just **3 inside 15 m** for Home (averaging {home_m['mean_shot_distance_m']} m), "
-        "and super-sub `away_9` scored a second-half hat-trick in just 24.7 minutes played."
+        "💡 **Descriptive Summary Observation (What to Review Next):** Aggregate volume metrics were close between teams "
+        f"(pass completion {home_m['pass_completion_pct']}% Home vs {away_m['pass_completion_pct']}% Away; share of recorded on-ball events "
+        f"{home_m['event_share_pct']}% Home vs {away_m['event_share_pct']}% Away [note: share of detected events, not ball possession]; "
+        f"shots {home_m['shots']} vs {away_m['shots']}; outfield distance {home_m['outfield_distance_km']} km vs {away_m['outfield_distance_km']} km; "
+        f"tackles/interceptions {home_m['tackles']}T/{home_m['interceptions']}I Home vs {away_m['tackles']}T/{away_m['interceptions']}I Away). "
+        "While descriptive summaries cannot establish why a team won, they point to specific differences worth reviewing on video: "
+        f"Away recorded **8 shots within 15 m** (mean shot distance {away_m['mean_shot_distance_m']} m) versus **3 within 15 m** for Home "
+        f"(mean {home_m['mean_shot_distance_m']} m), and substitute `away_9` scored 3 goals in 24.7 summary minutes."
     )
 
     st.divider()
@@ -224,7 +228,7 @@ def main() -> None:
         st.markdown(f"#### 📋 Moment Breakdown: `{active_moment['moment_key']}`")
         k1, k2 = st.columns(2)
         k1.metric("Video Clock (`match_01_full.mp4`)", active_moment["video_clock"], f"{active_moment['timestamp_ms']} ms")
-        k2.metric("Est. In-Play Clock", active_moment["inplay_clock"], f"Half {active_moment['half']}")
+        k2.metric("Inferred Half-Elapsed Time (Non-Official)", active_moment["inplay_clock"], f"Half {active_moment['half']}")
 
         k3, k4 = st.columns(2)
         shot_d_str = f"{active_moment['shot_distance_m']} m" if pd.notna(active_moment["shot_distance_m"]) else "No shot row"
