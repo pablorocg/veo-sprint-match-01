@@ -1,12 +1,12 @@
 # Hackathon Prototypes
 
-Six independent local Streamlit mockups, each assigned to an Orca Antigravity worker with requested model `gemini3.8flash`. Three prototypes are complete; the coach dashboard is built and undergoing a small wording review. All four have worker-reported analytical and headless UI checks passing. Two other initial completion reports are pending.
+Six independent local Streamlit mockups, each assigned to an Orca Antigravity worker with requested model `gemini3.8flash`. Four prototypes are complete; the coach dashboard is built and undergoing a small wording review. All five have worker-reported analytical and headless UI checks passing. The defensive-shape completion report is pending.
 
 All branches start from baseline commit `852655c`. No branch is merged or pushed. Original datasets and notebooks are preserved.
 
 | Idea | Branch | Port | Status / commit |
 | --- | --- | --- | --- |
-| Goal buildup and match story | `pablorocg/mockup-match-story` | 8501 | Awaiting worker report |
+| Goal buildup and match story | `pablorocg/mockup-match-story` | 8501 | Complete; `dd9b27a`; 6 tests and startup check passed |
 | Off-ball space creators | `pablorocg/mockup-space-creators` | 8502 | Complete; `35bc9e2`; 5 tests passed |
 | Defensive shape explorer | `pablorocg/mockup-defensive-shape` | 8503 | Awaiting worker report |
 | Second-half intensity | `pablorocg/mockup-second-half` | 8504 | Complete; `41f9452`; analytical/UI/startup checks passed |
@@ -17,7 +17,7 @@ All branches start from baseline commit `852655c`. No branch is merged or pushed
 
 Worktrees live under `/home/prg/orca/workspaces/veo-sprint-match-01/<name>`, where `<name>` is the branch suffix above. Each worker must add a `PROTOTYPE.md` with its exact launch command, features, validation evidence, and limitations.
 
-Intended launch pattern after completion:
+Launch pattern (available now for completed prototypes):
 
 ```bash
 cd /home/prg/orca/workspaces/veo-sprint-match-01/mockup-match-story
