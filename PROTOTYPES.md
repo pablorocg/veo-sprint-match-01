@@ -1,6 +1,6 @@
 # Hackathon Prototypes
 
-Six independent local Streamlit mockups, each assigned to an Orca Antigravity worker with requested model `gemini3.8flash`. Two prototypes are complete; the coach dashboard is built and undergoing a small wording review. All three have worker-reported analytical and headless UI checks passing. Three other initial completion reports are pending.
+Six independent local Streamlit mockups, each assigned to an Orca Antigravity worker with requested model `gemini3.8flash`. Three prototypes are complete; the coach dashboard is built and undergoing a small wording review. All four have worker-reported analytical and headless UI checks passing. Two other initial completion reports are pending.
 
 All branches start from baseline commit `852655c`. No branch is merged or pushed. Original datasets and notebooks are preserved.
 
@@ -9,7 +9,7 @@ All branches start from baseline commit `852655c`. No branch is merged or pushed
 | Goal buildup and match story | `pablorocg/mockup-match-story` | 8501 | Awaiting worker report |
 | Off-ball space creators | `pablorocg/mockup-space-creators` | 8502 | Complete; `35bc9e2`; 5 tests passed |
 | Defensive shape explorer | `pablorocg/mockup-defensive-shape` | 8503 | Awaiting worker report |
-| Second-half intensity | `pablorocg/mockup-second-half` | 8504 | Awaiting worker report |
+| Second-half intensity | `pablorocg/mockup-second-half` | 8504 | Complete; `41f9452`; analytical/UI/startup checks passed |
 | Accessible coach dashboard | `pablorocg/mockup-coach-dashboard` | 8505 | Review correction requested; `41ccf81`; 6 tests passed |
 | Passing options explorer | `pablorocg/mockup-passing-options` | 8506 | Complete; `ca42999`; 6 tests passed |
 
@@ -39,5 +39,5 @@ Workers own only their assigned branches and must report completion with a commi
 | `mockup-space-creators` | `ctx_40016ab5b1b3` |
 | `mockup-defensive-shape` | `ctx_9aa4ed8b3ca3` |
 | `mockup-second-half` | `ctx_11e1f5440e2e` |
-| `mockup-coach-dashboard` | `ctx_1da451f4b72f` |
+| `mockup-coach-dashboard` | `ctx_fd8fe001df34` (review follow-up; original `ctx_1da451f4b72f`) |
 | `mockup-passing-options` | `ctx_d16734d0720e` |
