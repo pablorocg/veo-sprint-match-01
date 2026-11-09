@@ -14,3 +14,9 @@ wheels/
 .memtrace/
 .pytest_cache/
 .streamlit/secrets.toml
+
+players.parquet
+player_summary.csv
+ball.csv
+events.csv
+*.mp4

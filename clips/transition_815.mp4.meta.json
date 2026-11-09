@@ -1,0 +1,18 @@
+{
+  "generator": "transition_visuals.export_transition_clip",
+  "source_path": "/home/prg/GitHub/veo-sprint-match-01/match_01_full.mp4",
+  "source_size_bytes": 687678103,
+  "source_mtime_ns": 1794245736962391826,
+  "start_s": 4067.033,
+  "end_s": 4087.699,
+  "settings": {
+    "video_codec": "libx264",
+    "audio_muted": true,
+    "make_gif": false,
+    "gif_fps": null,
+    "gif_max_width": null
+  },
+  "duration_s": 20.666,
+  "mp4_name": "transition_815.mp4",
+  "gif_name": null
+}

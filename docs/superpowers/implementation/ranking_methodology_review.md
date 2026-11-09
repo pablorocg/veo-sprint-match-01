@@ -1,0 +1,126 @@
+# Independent Audit: Defensive-Transition Ranking Methodology
+
+**Scope & status:** Analytical review of [DATA_DICTIONARY.md](../../../DATA_DICTIONARY.md), [mvp_analysis_draft.md](../../../mvp_analysis_draft.md), and [defence_to_attack_contract.md](defence_to_attack_contract.md), backed by independent raw-data checks on [events.csv](../../../events.csv) (1,289 rows), [player_summary.csv](../../../player_summary.csv) (33 rows), and [players.parquet](../../../players.parquet) (322,451 rows). All contract signatures and minimum columns are preserved; observed facts are separated from analytical proposals below.
+
+---
+
+## 1. Executive Verdict
+
+1. **No overall MVP — and no single undisputed transition winner — can be proved from this sample.** Under the contract's 15-second rules, **138** sequence-opening tackles/interceptions yield **63** passages with follow-up play, **10** final-third entry passes (across 10 passages), **3** shots (all by `home`), and **0** goals (1 counterattack goal, `TID=1006`, finishes at `+19.33s` shot / `+20.00s` goal). Reporting a role-separated shortlist with explicit uncertainty is scientifically stronger—and better aligned with sprint organisers—than forcing a single winner.
+2. **Headline shift to *"Who turned defence into attack?"* is mandatory.** With 3 shots at 15s (and `away` recording `0` 15s shots despite winning 4–2), "danger" cannot be evaluated in aggregate; shots and `TID=1006` serve as video case studies while aggregate comparison rests on ball progression and territorial entry.
+3. **Raw `progression_rank` and 4D `pareto_tier` have concrete empirical failure modes on this dataset** (goalkeeper `away_1` ranking #5 in forward metres; net-backward passer `home_7` landing in Pareto Tier 1; `349.9 m` of intra-transition ball carries going uncounted; and 13 simultaneous `dt = 0 ms` one-touch interceptions excluded by `event_id` tie order). Both metrics can remain in `ranking` per contract, but neither should be presented uncontextualised as "the player ranking."
+
+---
+
+## 2. Observed Real-Data Audit & Inconsistencies
+
+### 2.1 Verified Baselines & Alignment
+- **Schema & summary parity (Observed):** 1,289 events (`timestamp_ms` monotonic, 0 time inversions), 33 summary rows, 6 `goal` rows (only 4 `shot` rows have `is_goal == True`), 177 tackles/interceptions (`98 interception`, `79 tackle`), 138 sequence-openers (`78 interception`, `60 tackle`; `67 away`, `71 home`). `player_summary.csv` matches `events.csv` with **0 discrepancies** across `touches`, `passes`, `passes_completed`, `tackles`, and `interceptions`.
+- **Direction & angle conventions (Observed):** `attack_dir` is 100% consistent in both `events.csv` and `players.parquet` (`half 1`: `away +1`, `home -1`; `half 2`: `away -1`, `home +1`; `referee 0`). `pass_angle_deg` is measured anticlockwise from raw `+x` (not `attack_dir`-normalised). Every `sequence_id` (`1..456`) is contiguous, single-team, and single-half.
+- **Tracking-to-event spatial precision when IDs exist (Observed):** Across all 1,240 located events with non-null `player_id`, nearest-frame within-half lookup yields a median gap of **100 ms** (max **200 ms**) and median player-to-event distance of **0.21 m** (95th pct **0.91 m**, max **2.42 m**, **0** apparent teammate ID swaps).
+
+### 2.2 Six Data Anomalies Affecting Extraction & Attribution
+
+| Anomaly | Observed Fact in Raw Data | Impact on Contract Analysis |
+|---|---|---|
+| **1. Simultaneous `dt = 0 ms` one-touch interceptions (`pass` before `interception`)** | 156 event rows share an exact `timestamp_ms`. For one-touch interception-passes (`dt <= 150 ms`), 7 are ordered `interception -> pass` (included in 138 starts), but **14 are ordered `pass -> interception` at `dt = 0.000s`**—**13 of which open a `sequence_id`** (`seq` 143, 147, 177, 192, 212, 272, 329, 356, 362, 370, 380, 436, 456). | Arbitrarily excludes **13 genuine one-touch interception transitions**, including **4 by `away_12`** (`seq 456` / `eid=1283` alone has 4 completed passes, `59.2 m` forward gain, and a final-third entry) and **2 each by `home_14` (`seq 143`: `48.4 m`) and `away_2` (`seq 356`: `32.3 m`)**. |
+| **2. Simultaneous restart + pass pairs (`PASS_BEFORE_RESTART`)** | Restarts (`throw_in`, `kick_free_kick`, `kick_corner`) are co-detected within `0–100 ms` alongside a `pass` (or `shot`, `eid=1176/1177`) 55 times; in **31 of 55**, the `pass`/`shot` row precedes the restart row in `event_id` order (`19` completed passes). | **0** of the baseline 138 starts are hit at 10/15/20s because other stops occur first, **but** `seq 143` (`eid=424 pass` 34 ms before `eid=425 throw_in`) leaks a throw-in as an open-play pass if simultaneous starts or longer sequences are inspected. |
+| **3. Pass coordinates vs receiver IDs (clarifying spec)** | **All 536 of 536 (`100%`) completed passes have non-null `receiver_x` and `receiver_y`** (`x_end`/`y_end` are null on all passes; only `duel` populates `x_end`/`y_end`). Only `receiver_player_id` is null on **13** completed passes (`0` of which occur inside the 137 retained 15s transition passes; `1` occurs in `seq 456` `eid=1288`). Conversely, **154 of 296 failed passes** populate `receiver_player_id` with the **opponent** who recovered the ball. | `missing_endpoint_passes` is **0** across all 138 baseline transitions. Extraction/attribution must strictly filter `pass_success == True` before reading `receiver_player_id` or `receiver_x`, otherwise failed passes credit opponents as outlets/receivers. |
+| **4. Camera-side `player_id = NaN` dropout (`+y` touchline)** | `events.csv` has **43 rows with `player_id = NaN`** (`19 pass`, `16 throw_in`, `3 foul`, `2 kick_free_kick`, `2 kick_corner`, and **1 transition start: `TID=754`**, Half 2 `away` tackle at `y = +31.1 m`). `players.parquet` has **7,288** non-referee `NaN`-ID rows, **75% (`5,493`) on `away` in Half 2** (`median y = +19.8 m`, `0.76` unidentified `away` players/frame; `16` of the `19` `NaN` passes and `11` of the `13` `NaN`-receiver completed passes are Half 2 `away` near `+y`, i.e., `away`'s right flank `y_att < 0`). | `TID=754` must stay conserved in the 138 Sankey denominator with unattributed recoverer (`NaN`), and Half 2 `away` right-flank actions (`away_2`, `away_4`, `away_13`) carry systematic under-attribution risk in full-match context. |
+| **5. Unrecorded ball carries (`349.9 m`) & `17.5 m` line artifacts** | `dribble` (`n=34`) lacks endpoints, and ball carries emit no event. Comparing reception/recovery `x_att` to the same player's next action `x_att` inside the 15s transitions reveals **139 carries gaining `+349.9 m` forward**, including **4 carries crossing `x_att = 17.5 m`**: `TID=815` (`away_8`, `+21.8 m`, `1.3 -> 23.1`), `TID=1243` (`away_11`, `+9.6 m`), `TID=360` (`home_6`, `+3.1 m`), and `TID=773` (`home_8`, `+1.3 m`, `17.1 -> 18.4` immediately before assisting `home_10`'s shot). Meanwhile, **`TID=58`** starts *inside* the final third (`away_8` at `+24.0`), passes backward out (`18.5 -> 11.1`), and re-enters to `+24.0` (`away_17 -> away_12`). | Pass-only rules miss major progression (`home_2` `+46.9 m` carry; `away_4` `+32.3 m` carry including `+29.0 m` in goal buildup `TID=1006`; `away_8` `+30.1 m` carry), miss `TID=773`'s carry-assisted box entry, and award `TID=58` a "final-third entry" for **0.0 m net territorial gain** from recovery. |
+| **6. Loose-ball pickups & non-tackle turnovers** | **75 of 138 (`54.3%`)** candidate starts have **no observed completed pass or shot** (`58` sequence/opponent ends, `53` failed passes, `19` window ends, `6` second interventions, `1` throw-in, `1` half end). Among the 63 with a completed pass, in **10 (`15.9%`)** a **different teammate** collects the loose ball and plays the first pass (e.g., `TID=928`: `home_12` tackles at `10.9`, `home_2` collects at `15.7` and passes to `home_7` at `27.6`). Across all 456 match sequences, `190` begin with `pass` and `71` with `duel`. Only **1 of the 6 match goals** (`TID=1006`, finishing at `20.00s`) stems from the 138 starts (`seq 256` free kick, `seq 276` 1-event rebound goal, `seq 288` throw-in, `seq 317` interrupted by free kick at `+27.7s`, `seq 411` corner). | Calling `recovery_starts` "recoveries" overstates possession wins (over half have no follow-up). Calling the first pass *recipient* "first outlet" skips the loose-ball collector in 10 passages (`home_2` in `TID=928` is the true outlet + advancer, while `home_7` is the final-third target). |
+
+---
+
+## 3. Observability, Confounds & Audit of Proposed Ranking Rules
+
+### 3.1 Truly Observable Metrics vs Supporting Context
+
+| Tier | Metrics | Epistemic Status & Appropriate Use |
+|---|---|---|
+| **Directly observable actions** | `completed_transition_passes`, `progressive_passes` (`>=10 m`), `entries_delivered`, `entries_received`, `forward_metres` (pass), `net_forward_metres` (unclipped pass), intra-transition `carry_forward_metres`, direct `finisher` shots (`shot` rows), terminal `failed_transition_passes` | **Primary role-specific evidence.** Directly tied to a player's on-ball touch coordinates, subject only to camera-side `NaN` dropout and pass-vs-carry split. |
+| **Event-proxy starts & roles** | `recovery_starts` (sequence-opening tackle/interception), `recovery_followups`, `outlet_passages` | **Bounded opportunity denominators, not proven ball wins or pressure escapes.** Must always be paired with unresolved/failed counts. |
+| **Downstream passage associations** | `recovery_outcome_passages`, `outlet_outcome_passages`, multi-role `shot_passages` | **Supporting associative context only.** Credit depends on what 1–3 subsequent teammates do up to 15s later; must never be summed with direct actions or compared as causal conversion skill without denominators and Wilson intervals. |
+| **Contextual / confounding covariates** | `minutes_played`, `role` (`goalkeeper` vs `outfield`), player median `x_att`, `mean_pass_start_x_att`, `start_zone` mix, window (`10s / 15s / 20s`) | **Mandatory rivalry & confound controls.** Needed to test whether high totals reflect pitch runway or playing time rather than transition effectiveness. |
+
+### 3.2 Confounds That Matter Most (Quantified)
+
+1. **Starting-territory & goalkeeper runway confound (Severe):**
+   - A player passing from `x_att = -45 m` has `97.5 m` of legal forward pitch (`62.5 m` before even reaching the final third), whereas a forward receiving at `x_att = +18 m` has `<35 m` to the goal line and **zero eligibility** to record `entries_delivered` (`sx_att <= 17.5` required).
+   - **Empirical proof:** Goalkeeper **`away_1`** (`mean_pass_sx = -45.7 m`) ranks **#5 of all 33 players** in `progression_rank` (`58.4 m` across 3 routine clearances—`35.7 m` from a single kick `eid=212` ending at `-13.8 m`—alongside 3 failed passes, 0 entries, 0 follow-up recoveries). Meanwhile **`home_10`** (`med_x_att = +11.8 m`), who received **4 of all 10** final-third entries and took **2 of all 3** 15s transition shots, ranks **#25** (`4.4 m`).
+   - Across the 138 starts, `defensive_half` starts (`n=96`) generate **22 of 23** `forward_progression`-only outcomes (`>=10 m` pass without reaching `+17.5 m`), whereas `attacking_half` starts (`n=31`, starting `<=17.5 m` from the final third) generate **2 of the 3** shots (`6.5%` vs `1.0%`).
+2. **Positive-only pass clipping (`sum(max(gain, 0))`) & hidden turnovers (Severe):**
+   - Summing only positive pass gains rewards high-event-volume players who recycle backward and forward in the same match without penalising retreats or transition-ending giveaways.
+   - **Empirical proof:** **`home_7`** logs `+55.0 m` `forward_metres` (#7) despite **`-8.6 m` net pass gain** (including `-26.0 m` and `-22.3 m` back-passes to goalkeeper `home_1`). `away_6` (`+56.5 m` clipped vs `+4.6 m` net), `away_14` (`+42.0 m` vs `-1.8 m`), and `away_8` (`+6.5 m` vs `-34.6 m`) show the same divergence. Furthermore, terminal transition-ending `failed_pass` counts (`home_2`: 4, `home_14`: 4, `away_8`: 4, `away_12`: 3, `home_15`: 3, `home_10`: 3, `away_1`: 3) are absent from the minimum `ranking` columns despite being stored on `transitions.terminal_event_id`.
+3. **Sample size, Binomial/Wilson uncertainty & playing-time skew (High):**
+   - Thirteen players played `<50` minutes (halftime or rolling subs: e.g., `home_15` `48.1 min`, `away_17` `47.4 min`, `away_4` `29.6 min`, `away_9` `24.7 min`, `away_3` `21.2 min`). Totals favour 90-minute midfielders (`away_12`, `home_12`, `home_2`), while per-90 rates explode on tiny denominators (`away_4`: `103.1` pass forward m/90 and `168.6` total progression m/90 on 2 passes!).
+   - Outcome conversion denominators are too small to separate rates statistically: e.g., `home_12` `recovery_outcome_passages` `2/9 = 22.2%` (95% Wilson `[6.3%, 54.7%]`) overlaps completely with `home_2` `1/14 = 7.1%` (`[1.3%, 31.5%]`) and `away_9` `1/1 = 100%` (`[20.7%, 100.0%]`); `home_7` `outlet_outcome_passages` `2/4 = 50.0%` (`[15.0%, 85.0%]`) overlaps with `away_12` `0/8 = 0.0%` (`[0.0%, 32.4%]`).
+
+### 3.3 Critique of `pareto_tier` and `progression_rank`
+
+- **Are they understandable and defensible?**
+  - **`progression_rank` (`forward_metres` desc, `entries_delivered` desc, `player_id` asc)** is **easy to understand as a single-skill pass-yardage sort, but NOT defensible as an overall transition ranking** because it ranks goalkeeper `away_1` #5, ignores `-63.7 m` of backward passing by `home_7`, omits `349.9 m` of carries, omits turnovers, and structurally excludes forwards/targets (`home_10` #25, `away_9` #17). **Verdict:** Keep the column for API compliance, filter to outfielders in prose/charts, pair with net metres + carries + failed passes, and label strictly as *Outfield Completed-Pass Forward Gain*.
+  - **`pareto_tier` (over `entries_delivered`, `forward_metres`, `recovery_outcome_passages`, `outlet_outcome_passages`)** avoids arbitrary weights, **but fails as a user-facing ranking** for three reasons:
+    1. *False-positive non-dominance on tiny counts (`0–2`):* At 15s, Tier 1 is `{away_12, home_12, home_7}`. `home_7` enters Tier 1 solely because no other player simultaneously has `outlet_outcome_passages >= 2` and `entries_delivered >= 1`—even though `home_7` had `-8.6 m` net pass progression and those 2 outlet outcomes depended on downstream passes by teammates.
+    2. *Window fragility:* Moving from 10s -> 15s -> 20s shifts `away_8` from Tier `7 -> 3 -> 3` (on a single sequence `TID=815` where `away_6` entered at `+14.67s`), promotes `home_2` from Tier `2 -> 1`, and demotes `home_7` (`1 -> 2`) and `home_10` (`2 -> 3`). Fixing the 13 simultaneous `dt = 0 ms` starts promotes `away_6`, `home_14`, and `away_8` into Tier 2 while dropping `home_15` and `home_10` to Tier 3.
+    3. *Mixes direct action with downstream association while omitting target reception (`entries_received`):* Target players (`home_10`: 4 entries received, 2 shots) cannot reach Tier 1, while GK `away_1` sits in Tier 3 ahead of `away_17`, `away_9`, and `away_7`.
+    - **Verdict:** Keep `pareto_tier` in the DataFrame as an internal screening check (confirming `home_12` and `away_12` are non-dominated), **do not use "Pareto Tier" as the headline chart axis or presentation ordering**. Use role-separated multi-panel evidence (`plot_player_evidence`) instead.
+
+---
+
+## 4. Exact Labels & Schema Disambiguations to Prevent Inflated Claims
+
+### 4.1 Required Label Discipline (Tables, Sankey & Plots)
+
+| Internal / Draft Term | Avoid Saying | Use Exact Presentation Label |
+|---|---|---|
+| Headline | *"Transition MVP"* / *"Who turned defence into danger?"* | **"Who Turned Defensive Interventions into Attack? (15s Phase Analysis)"** |
+| `recovery_starts` (`n=138`) | *"Ball recoveries"* / *"Successful tackles & interceptions"* | **"Sequence-Opening Tackles/Interceptions (`n = 138`)"** |
+| `no_observed_followup` (`n=75`) | *"Failed recoveries"* | **"No Completed Pass or Shot Recorded Before Stop (`n = 75`)"** |
+| `forward_metres` | *"Total progression"* / *"Transition value added"* | **"Positive Forward Pass Metres (Completed Passes, Clipped >= 0 m)"** |
+| `entries_delivered` | *"Danger created"* / *"Chances created"* | **"Completed Passes Entering Final Third (`x_att <= 17.5 m -> > 17.5 m`)"** |
+| `recovery_outcome_passages` / `outlet_outcome_passages` | *"Recoveries/outlets creating shots or entries"* | **"Passages Reaching Entry/Shot Within 15s (Downstream Association, `k / n`)"** |
+| `progression_rank` | *"Overall transition rank"* | **"Pass-Only Forward-Metres Order (Outfield Context Required)"** |
+| Sankey `shot` node (`away=0, home=3` at 15s) | *"Shots from transitions"* (unqualified) | **"Shot Within 15s (`n = 3`; excludes `TID=1006` Away goal at `19.3s–20.0s`, grouped under Entry at 15s)"** |
+| Sankey `final_third_entry` (`n=9` exclusive vs `10` total) | *"9 final-third entries"* | **"Final-Third Entry, No Shot in 15s (`n = 9`; +1 entry passage `TID=672` also produced a shot)"** |
+
+### 4.2 Two Contract Column Ambiguities to Pin Down Explicitly
+1. **`shot_passages` vs `finisher` shots:** In [defence_to_attack_contract.md](defence_to_attack_contract.md), clarify in captions whether `shot_passages` counts **direct shots taken** (`home_10`: 2, `home_6`: 1; all others 0 at 15s) or **distinct passages with any attributed role ending in a shot** (`home_2`: 2, `home_10`: 2, `home_6/7/8/13/15/18`: 1 each). Presenting role-involvement as "shot passages" without qualification inflates credit across 8 players for just 3 shots.
+2. **`outlet` when loose ball is picked up by a teammate (`10/63` follow-up passages):** Document that `outlet` strictly means *recipient of the first completed pass*, which differs from the *first teammate on the ball* when a loose tackle rebounds to a teammate (`TID=928`: `home_12` tackle -> `home_2` loose-ball pickup & entry pass -> `home_7` reception).
+
+---
+
+## 5. Candidate Shortlist, Rival Explanations & Video Evidence Plan
+
+### 5.1 Quantitative Candidate Comparison (Observed 15s Baseline + Sensitivity Context)
+
+| Candidate (Position, Min) | Direct Progression (15s Pass + Carry) | Final-Third Entries (Del / Rec) | Role Starts & Associations (`k/n`) | Turnovers & Window / Bug Sensitivity | Core Role & Strongest Rival Explanation |
+|---|---|---|---|---|---|
+| **`home_12`** (Home LCM, `med_x_att -8.9 m`, **92.5 min**) | **79.3 m** pass (`+59.4 m` net, 5 prog passes) + **19.3 m** carry = **98.6 m** (#2 pass, #3 total) | **2** del / **0** rec (`TID=1053, 1182`) | Rec: `5/9` follow-up, **`2/9` entry/shot**; Outlet: `1/4` | `2` failed passes. **Pareto Tier 1 at 10s, 15s, and 20s.** | **Best balanced two-way connector (15s baseline).** *Rival:* Home lost 2–4; neither entry passage produced a shot; deep start (`-17.4 m`) inflates runway. |
+| **`away_12`** (Away LCM, `med_x_att -10.3 m`, **95.5 min**) | **106.0 m** pass (`+80.2 m` net, **6** prog passes, **12** comp) + **10.9 m** carry = **116.8 m** (**#1** both) | **0** del / **1** rec (`TID=58`) *(**1** del in `seq 456` if `dt=0` fixed)* | Rec: `5/9` follow-up, `1/9` entry/shot; Outlet: **8** (**#1**), `0/8` entry/shot | `3` failed passes. **Pareto Tier 1 & Rank #1 at 10/15/20s.** Gains **+46.5 m (`152.5 m`) + 1 entry** if 4 excluded `dt=0 ms` interceptions are restored. | **Primary deep-to-midfield launchpad for winning team.** *Rival:* First-phase distributor (`mean_pass_sx -13.7 m`), `0` baseline entries delivered, `0` shot involvements. |
+| **`home_2`** (Home RM, `med_x_att -6.9 m`, **82.4 min**) | **61.6 m** pass (`+42.7 m` net, 3 prog) + **46.9 m** carry (**#1** carry) = **108.4 m** (#2 total) | **2** del / **0** rec (`TID=672, 928`) | Rec: **14** starts (**#1**), `4/14` follow-up, `1/14` shot/entry; Involved in **2 of 3** 15s shots (`TID=526, 672`) | Match-high **`4` failed passes** (`10/14` pass completion in transitions); Tier 2 at 15s, Tier 1 at 20s (`TID=137`). | **Highest-volume disruptor & ball-carrier into danger.** *Rival:* High volume paired with lowest retention (`4/14` follow-ups) and highest turnover count (`4`). |
+| **`home_10`** (Home RF, `med_x_att +11.8 m`, **94.9 min**) | **4.4 m** pass (`-1.8 m` net) + **11.9 m** carry | **0** del / **4** rec (**#1**, 40% of match entries!) | Outlet: `2/2` outcome; Finisher: **2 of 3** 15s shots (`TID=672, 773`) | `3` failed passes; Rank #25 in `forward_metres`. | **Primary transition target & finisher.** *Rival:* Receiver of teammates' progression (`home_2`, `home_12`, `home_7`, `home_8`), 0 goals from transition shots. |
+| **`away_4`** (29.6 min) & **`away_9`** (24.7 min) *(Away H2 impact pair)* | `away_4`: **50.9 m** pass + **32.3 m** carry = **83.2 m** on just **2** passes! `away_9`: **22.1 m** pass, 3 match goals | `away_4`: **1** del / **1** rec; `away_9`: **0** del / **2** rec (`TID=962, 1006`) | Drive **`TID=1006`** (`away_13 -> away_4 -> away_9 -> away_4 -> away_9`), the match's **only candidate start ending in a goal (`+19.33s`/`+20.00s`)** | Too few minutes/touches (`2` passes each) for full-match volume award; goal falls 4.3s past 15s cutoff. | **Decisive clinical transition execution (explains 4–2 scoreline).** *Rival:* Small-sample substitute burst + 20s window extension required to capture the finish. |
+
+> **Explicit Non-Candidates to Explain Away:** Flag **`away_1`** (Rank #5, `58.4 m` — goalkeeper long kicks from `-45.7 m`, `0` entries/follow-ups) and **`home_7`** (Pareto Tier 1, `+55.0 m` clipped — net `-8.6 m` passer due to two `-22 m` to `-26 m` back-passes to `home_1`, elevated by `2/4` downstream outlet associations) as textbook examples of why naive single-metric rankings mislead.
+
+### 5.2 Recommended Moments for Tracking & Video Inspection (`V1` / `T8`)
+1. **`TID=1006` (`seq 354`, Half 2, `t = 4962.3s–4982.3s`, Away):** Deep interception by `away_13` (`-36.4 m`), outlet + **unrecorded `+29.0 m` carry** and final-third entry by `away_4` (`-20.6 -> +8.4 -> +27.2 m`), one-two with `away_9`, goal at `+20.00s`. Visually tests carry progression, the 15s vs 20s window boundary, and why Away won 4–2.
+2. **`TID=672` (`seq 239`, Half 1, `t = 3051.5s–3064.7s`, Home) or `TID=1182` (`seq 421`, Half 2, `t = 5885.5s–5890.4s`, Home):** Tests `home_2` (`+19.3 m` carry + entry pass to `home_10` shot in `TID=672`) or `home_12` (`+25.5 m` entry pass to `home_10` after `home_7` recovery in `TID=1182`).
+3. **Rival / Ambiguous Methodological Check — `TID=815` (`seq 286`, Half 2, `t = 4070.9s–4085.6s`, Away) or `seq 456` (`eid=1282/1283`, `t = 6435.3s`, Away):** `TID=815` tests `away_12` recovery -> `away_8`'s unrecorded `+21.8 m` carry into the final third followed by backward lay-off and `away_6` re-entry; `seq 456` visually checks whether `away_12`'s excluded `dt = 0 ms` interception-pass was a genuine one-touch counterattack launch.
+
+---
+
+## 6. Concrete Actionable Proposals (Non-Breaking to Shared API)
+
+1. **Preserve the Shared API; contextualise in `defence_to_danger.ipynb` and `plot_player_evidence`:**
+   - Keep `pareto_tier` and `progression_rank` in `ranking` per contract, but **separate `role == "goalkeeper"`** (`away_1`, `home_1`) in player comparison visuals/tables and **organise `plot_player_evidence` by functional transition role** (*Recoverer starts/follow-ups*, *Connector forward pass + carry metres & entries delivered*, *Target entries received & shots*), never as a single composite bar.
+2. **Expose three diagnostic columns in the notebook player table (computed directly from existing outputs):**
+   - `net_forward_metres` (unclipped `sum(ex_att - sx_att)` to expose `home_7`'s `-8.6 m` and `away_8`'s `-34.6 m`),
+   - `failed_transition_passes` (from `transitions` where `stop_reason == "failed_pass"` mapped via `terminal_event_id`, fulfilling the draft's "recorded failures" requirement), and
+   - `intra_transition_carry_metres` (positive `x_att` gain between reception/recovery and next action by the same player, capturing the missing `349.9 m` of ball progression).
+3. **Add two mandatory sensitivity checks in `T6` (without altering baseline `138` starts unless Coordinator chooses):**
+   - **Window check (`10s / 15s / 20s`):** Explicitly highlight `TID=1006` entering `shot`/goal at `20s` (explaining Away's `0` 15s shots in the Sankey).
+   - **Simultaneous `dt = 0 ms` tie-order check (`138` vs `151` starts):** Show a 5-line sensitivity table swapping same-timestamp, same-player `pass -> interception` sequence openers (`away_12` jumping `106.0 m -> 152.5 m` and `0 -> 1` entry). If any helper inspects longer sequences, guard against `PASS_BEFORE_RESTART` (`<=100 ms` same-sequence restart pairs) and flag `TID=58` (`start_zone == "final_third"`, `0.0 m` net gain from recovery).
+4. **Recommend a disciplined two-leader + target conclusion rather than a forced single winner:**
+   - Frame the answer around **two complementary midfield connectors—`home_12` (most complete 15s direct entry + progression profile) and `away_12` (highest progression & outlet hub, further strengthened once `dt = 0 ms` tie-ordering is accounted for)—contrasted with `home_2` (carry-heavy high-risk disruptor), `home_10` (final-third receiver/finisher), and `away_4`/`away_9` (`TID=1006` clinical 20s counterattack goal)**, stating clearly why sample size (`10` entries, `3` shots at 15s) precludes crowning a single match MVP.

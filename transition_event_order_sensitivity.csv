@@ -1,0 +1,4 @@
+event_order_setting,candidate_starts,entry_passages,shot_passages,away_12_positive_pass_m,away_12_entries_delivered,home_12_positive_pass_m,home_12_entries_delivered
+Original order (baseline),138,10,3,105.98119999999997,0,79.3331,2
+Completed-pass ties + restart guard,150,11,3,152.48989999999998,1,92.2623,2
+Also include failed-pass tie (exploratory),151,11,3,152.48989999999998,1,92.2623,2
