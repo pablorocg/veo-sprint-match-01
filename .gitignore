@@ -20,3 +20,4 @@ player_summary.csv
 ball.csv
 events.csv
 *.mp4
+data/
